@@ -88,6 +88,18 @@
 // per-component bundle with individual values.yaml per component. Use
 // --deployer argocd for Argo CD Application manifests.
 //
+// skill - Generate AI agent skill file (Utility):
+//
+//	aicr skill --agent claude-code
+//	aicr skill --agent codex
+//	aicr skill --agent claude-code --stdout
+//
+// Generates a skill/instruction file that teaches a coding agent how to use the
+// AICR CLI. The file is written to the agent's standard configuration directory
+// (~/.claude/skills/aicr/SKILL.md for Claude Code, ~/.codex/instructions.md for Codex).
+// Use --stdout to print the content instead of writing to disk. Errors if the target
+// file already exists (delete it first to regenerate).
+//
 // # Global Flags
 //
 //	--output, -o   Output file path (default: stdout)

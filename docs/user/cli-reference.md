@@ -1447,6 +1447,48 @@ aicr trust update
 
 ---
 
+### aicr skill
+
+Generate an AI agent skill/instruction file that teaches a coding agent how to use the AICR CLI. The generated file is written to the agent's standard configuration directory.
+
+**Synopsis:**
+```shell
+aicr skill --agent <agent> [flags]
+```
+
+**Flags:**
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--agent` | string | (required) | Target coding agent: `claude-code`, `codex` |
+| `--stdout` | bool | false | Print to stdout instead of writing to disk |
+
+**Install Locations:**
+
+| Agent | Path |
+|-------|------|
+| `claude-code` | `~/.claude/skills/aicr/SKILL.md` |
+| `codex` | `~/.codex/instructions.md` |
+
+**Behavior:**
+- Without `--stdout`: writes the file to disk and prints the path
+- With `--stdout`: prints the generated content to stdout
+- Errors if the target file already exists — delete it first to regenerate
+- Creates parent directories as needed
+
+**Examples:**
+```shell
+# Install Claude Code skill file
+aicr skill --agent claude-code
+
+# Install Codex instruction file
+aicr skill --agent codex
+
+# Print to stdout (e.g., for review before installing)
+aicr skill --agent claude-code --stdout
+```
+
+---
+
 ## Complete Workflow Examples
 
 ### File-Based Workflow

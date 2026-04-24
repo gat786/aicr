@@ -94,9 +94,9 @@
 //	aicr skill --agent codex
 //	aicr skill --agent claude-code --stdout
 //
-// Generates a skill/instruction file that teaches a coding agent how to use the
+// Generates a skill file that teaches a coding agent how to use the
 // AICR CLI. The file is written to the agent's standard configuration directory
-// (~/.claude/skills/aicr/SKILL.md for Claude Code, ~/.codex/instructions.md for Codex).
+// (~/.claude/skills/aicr/SKILL.md for Claude Code, ~/.codex/skills/aicr/SKILL.md for Codex).
 // Use --stdout to print the content instead of writing to disk. Errors if the target
 // file already exists (delete it first to regenerate).
 //

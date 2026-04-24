@@ -45,7 +45,7 @@ func skillCmd() *cli.Command {
 		Name:     "skill",
 		Category: "Utilities",
 		Usage:    "Generate AI agent skill file for AICR CLI.",
-		Description: `Generates a skill/instruction file that teaches a coding agent
+		Description: `Generates a skill file that teaches a coding agent
 how to use the AICR CLI. The file is written to the agent's
 standard configuration directory.
 
@@ -53,7 +53,7 @@ Examples:
   # Generate Claude Code skill file
   aicr skill --agent claude-code
 
-  # Generate Codex instruction file
+  # Generate Codex skill file
   aicr skill --agent codex
 
   # Print to stdout instead of writing to disk

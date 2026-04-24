@@ -352,15 +352,28 @@ func TestSkillGenerateCodex(t *testing.T) {
 		t.Fatalf("generate() unexpected error: %v", err)
 	}
 
+	claudeContent, err := (&claudeCodeGenerator{}).generate(meta)
+	if err != nil {
+		t.Fatalf("claude generate() unexpected error: %v", err)
+	}
+
 	out := string(content)
 
-	// Must NOT start with YAML frontmatter (Codex uses plain markdown).
-	if strings.HasPrefix(out, "---\n") {
-		t.Error("output must not start with YAML frontmatter delimiter '---'")
+	// Must start with YAML frontmatter for Codex skill discovery.
+	if !strings.HasPrefix(out, "---\n") {
+		t.Error("output must start with YAML frontmatter delimiter '---'")
+	}
+
+	if !strings.Contains(out, "name: aicr") {
+		t.Error("output missing Codex skill frontmatter name")
+	}
+
+	if out != string(claudeContent) {
+		t.Error("Codex skill content must exactly match Claude Code skill content")
 	}
 
 	// Must start with a markdown heading.
-	if !strings.HasPrefix(out, "# ") {
+	if !strings.Contains(out, "\n# ") {
 		t.Error("output must start with markdown heading '# '")
 	}
 
@@ -385,7 +398,7 @@ func TestSkillCodexInstallPath(t *testing.T) {
 		t.Fatalf("installPath() unexpected error: %v", err)
 	}
 
-	want := filepath.Join(".codex", "instructions.md")
+	want := filepath.Join(".codex", "skills", "aicr", "SKILL.md")
 	if !strings.HasSuffix(path, want) {
 		t.Errorf("installPath() = %q, want suffix %q", path, want)
 	}

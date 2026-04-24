@@ -1449,7 +1449,7 @@ aicr trust update
 
 ### aicr skill
 
-Generate an AI agent skill/instruction file that teaches a coding agent how to use the AICR CLI. The generated file is written to the agent's standard configuration directory.
+Generate an AI agent skill file that teaches a coding agent how to use the AICR CLI. The generated file is written to the agent's standard configuration directory.
 
 **Synopsis:**
 ```shell
@@ -1467,7 +1467,7 @@ aicr skill --agent <agent> [flags]
 | Agent | Path |
 |-------|------|
 | `claude-code` | `~/.claude/skills/aicr/SKILL.md` |
-| `codex` | `~/.codex/instructions.md` |
+| `codex` | `~/.codex/skills/aicr/SKILL.md` |
 
 **Behavior:**
 - Without `--stdout`: writes the file to disk and prints the path
@@ -1480,7 +1480,7 @@ aicr skill --agent <agent> [flags]
 # Install Claude Code skill file
 aicr skill --agent claude-code
 
-# Install Codex instruction file
+# Install Codex skill file
 aicr skill --agent codex
 
 # Print to stdout (e.g., for review before installing)

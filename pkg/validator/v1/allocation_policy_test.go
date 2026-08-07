@@ -234,8 +234,11 @@ func TestResolveGPUAllocationPolicy(t *testing.T) {
 			want: GPUAllocationPolicyDevicePluginExtendedResource,
 		},
 		{
-			// Both operator components enabled: gpu-operator wins (warn).
-			name: "both gpu-operator and gpu-operator-ocp enabled: gpu-operator resolves the advertiser",
+			// Two GPU operators on one cluster collide at the operand level
+			// regardless of allocation policy or external advertisers presence,
+			// so enabling both fails closed (ErrCodeInvalidRequest) instead of
+			// silently preferring one (#1685 and #1327).
+			name: "both gpu-operator and gpu-operator-ocp enabled: invalid (rejected)",
 			recipe: &recipe.RecipeResult{ComponentRefs: []recipe.ComponentRef{
 				gpuOperatorRef(true),
 				{
@@ -245,7 +248,31 @@ func TestResolveGPUAllocationPolicy(t *testing.T) {
 					},
 				},
 			}},
-			want: GPUAllocationPolicyDevicePluginExtendedResource,
+			wantErr: true,
+			wantMsg: "invalid GPU allocation configuration: components \"gpu-operator\" and \"gpu-operator-ocp\" are both enabled",
+		},
+		{
+			// Regression for the #1685 orientation gap: a custom recipe with
+			// gpu-operator devicePlugin.enabled=false and gpu-operator-ocp
+			// devicePlugin.enabled=true previously resolved dra-resource-claim
+			// (gpu-operator won) while the OCP ClusterPolicy still rendered an
+			// enabled device plugin — the dual-advertisement state #1327
+			// rejects. Enabling both operators must fail closed before any
+			// policy is derived, regardless of which side carries the
+			// divergent pin.
+			name: "both operators enabled with divergent devicePlugin pins: invalid (orientation gap)",
+			recipe: &recipe.RecipeResult{ComponentRefs: []recipe.ComponentRef{
+				draDriverRef(true, true),
+				gpuOperatorRef(false),
+				{
+					Name: "gpu-operator-ocp",
+					Overrides: map[string]any{
+						"devicePlugin": map[string]any{"enabled": true},
+					},
+				},
+			}},
+			wantErr: true,
+			wantMsg: "invalid GPU allocation configuration: components \"gpu-operator\" and \"gpu-operator-ocp\" are both enabled",
 		},
 		{
 			// DRA opt-in stands on its own: no operator component needed.
@@ -521,7 +548,7 @@ func TestResolveGPUAllocationPolicyExternalAdvertiser(t *testing.T) {
 				},
 			),
 			wantErr: true,
-			wantMsg: "devicePlugin.enabled=true",
+			wantMsg: "invalid GPU allocation configuration: components \"gpu-operator\" and \"gpu-operator-ocp\" are both enabled",
 		},
 		{
 			// Both operator components enabled with the plugin off on each:
@@ -538,7 +565,8 @@ func TestResolveGPUAllocationPolicyExternalAdvertiser(t *testing.T) {
 					},
 				},
 			),
-			want: GPUAllocationPolicyDevicePluginExtendedResource,
+			wantErr: true,
+			wantMsg: "invalid GPU allocation configuration: components \"gpu-operator\" and \"gpu-operator-ocp\" are both enabled",
 		},
 		{
 			// An enabled operator component with the key ABSENT follows the
@@ -550,7 +578,7 @@ func TestResolveGPUAllocationPolicyExternalAdvertiser(t *testing.T) {
 				recipe.ComponentRef{Name: "gpu-operator-ocp"},
 			),
 			wantErr: true,
-			wantMsg: "devicePlugin.enabled=true",
+			wantMsg: "invalid GPU allocation configuration: components \"gpu-operator\" and \"gpu-operator-ocp\" are both enabled",
 		},
 		{
 			name:    "external advertiser with DRA gpus enabled is dual advertisement",

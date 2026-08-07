@@ -17,7 +17,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/NVIDIA/aicr/pkg/allocpolicy"
@@ -92,26 +91,40 @@ const (
 //
 // The device-plugin advertiser is read from an enabled gpu-operator OR
 // gpu-operator-ocp componentRef (OCP recipes disable the former and carry the
-// latter); if both are enabled, gpu-operator wins with a warning. When
-// NEITHER is present and enabled, there is no device-plugin advertiser at all
-// — INFERRING an externally managed advertiser from that absence is an
-// explicit #1327 non-goal. An advertiser declared explicitly via
-// metadata.selectedProfile.advertiser: external (ADR-015 GKE amendment) IS
-// supported and handled by the external-advertiser branch below.
+// latter); if both are enabled then ErrCodeInvalidRequest (#1685) — two GPU
+// operators collide at the operand level regardless of allocation policy,
+// and failing closed beats silently preferring one (a divergent
+// devicePlugin.enabled across the two would otherwise slip through).
+//
+// When NEITHER is present and enabled, there is
+// no device-plugin advertiser at all — INFERRING an externally managed
+// advertiser from that absence is an explicit #1327 non-goal. An advertiser
+// declared explicitly via metadata.selectedProfile.advertiser: external
+// (ADR-015 GKE amendment) IS supported and handled by the external-advertiser
+// branch below.
 //
 // Validity gates (ErrCodeInvalidRequest, fail closed at resolution time):
+//
+//   - an ENABLED gpu-operator and an ENABLED gpu-operator-ocp with no
+//     externalAdvertiser: Both GPU operators enabled: reject (#1685) —
+//     two operators collide at the operand level.
+//
 //   - an ENABLED nvidia-dra-driver-gpu component with resources.gpus.enabled
 //     ABSENT: the chart's declared default (true) would diverge from any
 //     silent resolution — the switch must be explicitly true or false.
+//
 //   - gpus.enabled=true with gpuResourcesEnabledOverride=false: the upstream
 //     chart install guard rejects this combination.
+//
 //   - no whole-GPU advertiser: gpus.enabled explicitly false (or the DRA
 //     component absent/disabled) AND no usable device-plugin advertiser
 //     (devicePlugin.enabled=false, or no enabled GPU operator component).
+//
 //   - gpus.enabled=true with devicePlugin.enabled=true: dual advertisement —
 //     both mechanisms advertising whole GPUs on the same nodes risks GPU
 //     over-admission; exactly one advertiser is required. (Transitional
 //     warning until the production-default flip; an error since.)
+//
 //   - gpus.enabled=false with gpuResourcesEnabledOverride=true: the inert
 //     waiver disarms the chart-guard tripwire that protects the
 //     device-plugin default. (Transitional warning until the
@@ -202,16 +215,17 @@ func ResolveGPUAllocationPolicy(parent context.Context, r *recipe.RecipeResult) 
 	externalAdvertiser := r.Metadata.SelectedProfile != nil &&
 		r.Metadata.SelectedProfile.Advertiser == allocpolicy.AdvertiserExternal
 	opRef := enabledComponentRef(r, gpuOperatorComponentName)
-	if ocpRef := enabledComponentRef(r, gpuOperatorOCPComponentName); ocpRef != nil {
+	ocpRef := enabledComponentRef(r, gpuOperatorOCPComponentName)
+	if ocpRef != nil {
 		if opRef != nil {
-			if !externalAdvertiser {
-				slog.Warn("both gpu-operator and gpu-operator-ocp are enabled in the recipe; resolving devicePlugin.enabled from gpu-operator",
-					"preferred", gpuOperatorComponentName, "ignored", gpuOperatorOCPComponentName)
-			}
-		} else {
-			opRef = ocpRef
-			operatorName = gpuOperatorOCPComponentName
+			// Both GPU operators enabled: reject (#1685) — two operators collide at the operand level.
+			return "", errors.New(errors.ErrCodeInvalidRequest, fmt.Sprintf(
+				"invalid GPU allocation configuration: components %q and %q are both enabled — two GPU operators collide at the operand level; enable exactly one (OpenShift recipes disable %q and carry %q) (issue #1685)",
+				gpuOperatorComponentName, gpuOperatorOCPComponentName,
+				gpuOperatorComponentName, gpuOperatorOCPComponentName))
 		}
+		opRef = ocpRef
+		operatorName = gpuOperatorOCPComponentName
 	}
 	if opRef != nil {
 		values, err := r.GetValuesForComponentWithContext(ctx, opRef.Name)
